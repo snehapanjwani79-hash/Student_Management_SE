@@ -123,6 +123,28 @@ class StudentDatabase {
         this._notifyListeners({ type: 'STORAGE_SYNC', timestamp: Date.now() });
       }
     });
+
+    // Auto-sync with MongoDB Atlas Backend
+    this.syncWithBackend();
+    window.addEventListener('focus', () => this.syncWithBackend());
+    setInterval(() => this.syncWithBackend(), 15000);
+  }
+
+  async syncWithBackend() {
+    try {
+      const res = await fetch('/api/students');
+      if (res.ok) {
+        const remoteStudents = await res.json();
+        if (Array.isArray(remoteStudents) && remoteStudents.length > 0) {
+          this._saveToStorage(remoteStudents);
+          this._notifyListeners({ type: 'BACKEND_SYNC', timestamp: Date.now() });
+          const badge = document.getElementById('dbSyncStatus');
+          if (badge) badge.textContent = 'MongoDB Atlas Connected';
+        }
+      }
+    } catch (err) {
+      console.warn('Backend sync:', err.message);
+    }
   }
 
   onSync(callback) {
@@ -493,6 +515,13 @@ class StudentDatabase {
     students.unshift(newStudent);
     this._saveToStorage(students);
 
+    // Sync to MongoDB Atlas backend
+    fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newStudent)
+    }).catch(err => console.warn('MongoDB POST sync error:', err));
+
     this._broadcast({
       type: 'STUDENT_REGISTERED',
       student: newStudent,
@@ -575,6 +604,16 @@ class StudentDatabase {
 
     students[index] = stagedRecord;
     this._saveToStorage(students);
+
+    // Sync to MongoDB Atlas backend
+    fetch(`/api/students/${encodeURIComponent(cleanAdm)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        updatedFields: stagedRecord,
+        expectedVersion: expectedVersion
+      })
+    }).catch(err => console.warn('MongoDB PUT sync error:', err));
 
     this._broadcast({
       type: 'STUDENT_UPDATED',
