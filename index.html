@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BML Munjal University - Student Management Portal</title>
+  <meta name="description" content="Official Student Management Portal for BML Munjal University. Implements secure student registration, record updates with atomic rollback, concurrency control, and digital ID card generation.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top University Header Bar (BML Munjal University Branding) -->
+  <header class="bmu-header">
+    <div class="header-container">
+      <div class="brand-wrapper">
+        <div class="bmu-logo-badge" title="BML Munjal University">
+          <div class="bmu-logo-inner">
+            <span class="tree-icon">🌳</span>
+          </div>
+        </div>
+        <div class="brand-titles">
+          <h1>BML MUNJAL UNIVERSITY</h1>
+          <div class="subtitle">A HERO GROUP INITIATIVE &bull; STUDENT MANAGEMENT PORTAL</div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="portal-badge" title="Multi-tab database synchronization active">
+          <span class="status-dot sync-pulse"></span>
+          <span>OCC & Storage Sync Active</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="bmu-nav">
+    <div class="nav-container">
+      <ul class="nav-tabs" role="tablist">
+        <li>
+          <button class="nav-tab-btn active" data-tab="search-view" id="tab-search">
+            🔍 Search & Directory
+          </button>
+        </li>
+        <li>
+          <button class="nav-tab-btn" data-tab="register-view" id="tab-register">
+            ➕ Student Registration <span style="font-size: 0.72rem; color: #0078d4; background: #e0f2fe; padding: 2px 6px; border-radius: 999px;">TC1</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-tab-btn" data-tab="id-card" id="tab-idcard">
+            🪪 Student ID Card Studio <span style="font-size: 0.72rem; color: #0078d4; background: #e0f2fe; padding: 2px 6px; border-radius: 999px;">TC4</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Body Content -->
+  <main class="main-wrapper">
+
+    <!-- KPI Overview Bar -->
+    <div class="quick-stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon info">👥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="statTotalStudents">4</div>
+          <div class="stat-label">Enrolled Students</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- TAB 1: Search & View Students (Req A, B, C)                   -->
+    <!-- ============================================================= -->
+    <section class="tab-pane active" id="search-view">
+      <div class="search-hero-card">
+        <div class="search-header-row">
+          <div>
+            <h2 class="section-title">🔍 Search Student Directory</h2>
+            <p class="section-subtitle">Search by Admission Number (e.g. 24CSE001) or Student Name</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" onclick="window.switchPortalTab('register-view')">
+              ➕ Register New Student
+            </button>
+          </div>
+        </div>
+
+        <div class="search-input-group">
+          <div class="search-box-wrapper">
+            <span class="search-icon-inside">🔎</span>
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="search-input" 
+              autocomplete="off"
+            />
+          </div>
+          <button class="btn-primary" id="btnSearch">Search</button>
+          <button class="btn-secondary" id="btnClearSearch">Clear</button>
+        </div>
+
+        <div class="filter-pills">
+          <span class="filter-label">Quick Search:</span>
+          <button class="pill-badge" data-filter="24CSE001">24CSE001 (Aarav)</button>
+          <button class="pill-badge" data-filter="24CSE042">24CSE042 (Sneha)</button>
+          <button class="pill-badge" data-filter="24MBA015">24MBA015 (Rohan)</button>
+          <button class="pill-badge" data-filter="24BBA088">24BBA088 (Priya)</button>
+          <button class="pill-badge" data-filter="INVALID_999" title="Test Student Not Found message">INVALID_999 (Test Not Found)</button>
+        </div>
+      </div>
+
+      <!-- "Student Not Found" Empty State (Requirement A) -->
+      <div class="empty-state" id="studentNotFoundState" style="display: none;">
+        <div class="empty-icon">🔍❌</div>
+        <h3 class="empty-title">Student Not Found</h3>
+        <p class="empty-text">
+          No student record matches the entered admission number or search query <span id="notFoundQueryText" style="font-weight: 700; color: #0c2340;"></span>.<br>
+          Please verify the admission number or register a new student.
+        </p>
+        <div style="display: flex; justify-content: center; gap: 0.75rem;">
+          <button class="btn-secondary" onclick="document.getElementById('btnClearSearch').click()">View All Students</button>
+          <button class="btn-primary" onclick="window.switchPortalTab('register-view')">Register Student</button>
+        </div>
+      </div>
+
+      <!-- Student Cards Grid -->
+      <div class="students-grid" id="studentsGrid">
+        <!-- Injected via JavaScript -->
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- TAB 2: Register Student Form (Req E & TC1)                    -->
+    <!-- ============================================================= -->
+    <section class="tab-pane" id="register-view">
+      <div class="search-hero-card" style="max-width: 820px; margin: 0 auto;">
+        <div class="search-header-row">
+          <div>
+            <h2 class="section-title">➕ Student Registration Portal</h2>
+            <p class="section-subtitle">Enroll new student — Admission No &amp; Section are automatically allotted by the system</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-secondary" id="btnTc1FillDuplicate" title="Test backend rejection of duplicate admission number">
+              ⚡ Demo TC1 (Duplicate Rejection)
+            </button>
+            <button class="btn-secondary" id="btnDemoSibling" title="Register a sibling with identical parent details but unique student details">
+              ⚡ Demo Sibling (Shared Parents)
+            </button>
+            <button class="btn-secondary" id="btnDemoDuplicatePhone" title="Test rejection when registering with an existing student's phone number">
+              ⚡ Demo Duplicate Student Phone
+            </button>
+            <button class="btn-secondary" id="btnTc1RaceSimulate" title="Dispatch two simultaneous requests with same admission number">
+              ⚡ Simultaneous Race Test
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.25rem; padding: 0.85rem 1.15rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; font-size: 0.85rem; color: #0369a1; line-height: 1.5;">
+          <strong>ℹ️ System Auto-Allotment:</strong><br>
+          &bull; <b>Admission Number</b>: Automatically assigned by system in consistent 8-character format (e.g. <code>24CSE043</code>).<br>
+          &bull; <b>Class & Section</b>: Automatically allotted by alphabetical rule based on student's name:<br>
+          &nbsp;&nbsp;<b>A – F</b> &rarr; <code>CSE-A</code> &nbsp;|&nbsp; <b>G – L</b> &rarr; <code>CSE-B</code> &nbsp;|&nbsp; <b>M – R</b> &rarr; <code>CSE-C</code> &nbsp;|&nbsp; <b>S – Z</b> &rarr; <code>CSE-D</code>
+        </div>
+
+        <div id="registerAlert" class="alert-banner info" style="display: none;"></div>
+
+        <form id="registerStudentForm" autocomplete="off">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required-star">*</span></label>
+              <input type="text" id="regName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required-star">*</span></label>
+              <input type="date" id="regDob" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Personal Email Address <span class="required-star">*</span></span>
+                <span class="form-hint">Non-BMU (Must be unique)</span>
+              </label>
+              <input type="email" id="regPersonalEmail" class="form-control" required />
+              <span class="form-hint" style="color: #0369a1;">* Official @bmu.edu.in email will be automatically allocated upon registration.</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Student Contact Number <span class="required-star">*</span></span>
+                <span class="form-hint">Must be unique per student</span>
+              </label>
+              <input type="tel" id="regPhone" class="form-control" maxlength="10" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Blood Group</label>
+              <select id="regBloodGroup" class="form-control">
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Course / Program <span class="required-star">*</span></label>
+              <input type="text" id="regCourse" class="form-control" value="B.Tech - Computer Science &amp; Engineering" required />
+            </div>
+            <!-- Parent / Guardian Information (Siblings Allowed to share) -->
+            <div class="form-group full-width" style="margin-top: 0.5rem; padding: 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;">
+              <div style="font-weight: 700; color: #0c2340; font-size: 0.92rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                <span>👨‍👩‍👧 Parent / Guardian Details</span>
+                <span style="font-size: 0.75rem; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 999px;">✓ Siblings allowed to share parent records</span>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Parent / Guardian Name</label>
+                  <input type="text" id="regParentName" class="form-control" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Parent Contact Number</label>
+                  <input type="tel" id="regParentPhone" class="form-control" maxlength="10" />
+                </div>
+                <div class="form-group full-width">
+                  <label class="form-label">Parent Email Address</label>
+                  <input type="email" id="regParentEmail" class="form-control" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Residential Address <span class="required-star">*</span></label>
+              <textarea id="regAddress" class="form-control" rows="3" required></textarea>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="reset" class="btn-secondary">Reset Form</button>
+            <button type="submit" class="btn-primary">Register Student Record</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- TAB 3: Student ID Card Studio (Req D & TC4)                  -->
+    <!-- ============================================================= -->
+    <section class="tab-pane" id="id-card">
+      <div class="search-hero-card" style="max-width: 820px; margin: 0 auto 1.5rem;">
+        <div class="search-header-row">
+          <div>
+            <h2 class="section-title">🪪 Student ID Card Studio</h2>
+            <p class="section-subtitle">Generate, verify, and print official university student identity credentials</p>
+          </div>
+          <button class="btn-secondary" id="btnRunTc4Interactive">
+            ⚡ Run TC4 Interactive Demo
+          </button>
+        </div>
+
+        <div id="idCardSearchAlert" class="alert-banner error" style="display: none;"></div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: end;">
+          <div class="form-group">
+            <label class="form-label">Select Registered Student:</label>
+            <select id="idCardStudentPicker" class="form-control">
+              <option value="">-- Choose from Registered Students --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Or Enter Admission Number:</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="idCardSearchInput" class="form-control" />
+              <button class="btn-primary" id="btnLoadIdCard">Generate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ID Card Display Area -->
+      <div id="idCardEmptyAlert" class="empty-state" style="display: none;">
+        <div class="empty-icon">🪪⚠️</div>
+        <h3 class="empty-title">ID Card Generation Blocked</h3>
+        <p class="empty-text">No student found for the requested admission number. In accordance with university protocol (TC4), cards cannot be generated for nonexistent records.</p>
+      </div>
+
+      <div class="id-card-stage" id="idCardPreviewContainer" style="display: none;">
+        <!-- Official ID Card Component -->
+        <div class="id-card-container" id="printableIdCard">
+          <div class="id-card-top-bar">
+            <div class="id-card-brand">
+              <div class="bmu-logo-badge" style="width: 32px; height: 32px; padding: 2px;">
+                <div class="bmu-logo-inner">
+                  <span style="font-size: 16px;">🌳</span>
+                </div>
+              </div>
+              <div>
+                <h3>BML MUNJAL UNIVERSITY</h3>
+                <div class="id-card-subbrand">A HERO GROUP INITIATIVE</div>
+              </div>
+            </div>
+            <div class="id-card-type-tag">STUDENT IDENTITY CARD</div>
+          </div>
+
+          <div class="id-card-body">
+            <div class="id-avatar-frame">
+              <img id="idCardAvatar" src="" alt="Student Avatar" />
+            </div>
+
+            <h2 class="id-student-name" id="idCardName">-</h2>
+            <div class="id-admission-no">
+              ADM NO: <span id="idCardAdmission">-</span>
+            </div>
+
+            <table class="id-details-table">
+              <tr>
+                <td class="label-col">Program:</td>
+                <td class="value-col" id="idCardCourse">-</td>
+              </tr>
+              <tr>
+                <td class="label-col">Class & Sec:</td>
+                <td class="value-col" id="idCardSection">-</td>
+              </tr>
+              <tr>
+                <td class="label-col">Date of Birth:</td>
+                <td class="value-col" id="idCardDob">-</td>
+              </tr>
+              <tr>
+                <td class="label-col">Contact:</td>
+                <td class="value-col" id="idCardPhone">-</td>
+              </tr>
+              <tr>
+                <td class="label-col">Blood Group:</td>
+                <td class="value-col" id="idCardBlood">-</td>
+              </tr>
+              <tr>
+                <td class="label-col">BMU Email:</td>
+                <td class="value-col" id="idCardBmuEmail" style="color: #0078d4; font-size: 0.82rem; font-weight: 700; word-break: break-all;">-</td>
+              </tr>
+            </table>
+
+            <div class="id-card-footer">
+              <div class="id-barcode-box">
+                <div class="barcode-stripes">
+                  <span class="barcode-stripe" style="width: 3px;"></span>
+                  <span class="barcode-stripe" style="width: 1px; margin-left: 2px;"></span>
+                  <span class="barcode-stripe" style="width: 4px; margin-left: 3px;"></span>
+                  <span class="barcode-stripe" style="width: 2px; margin-left: 1px;"></span>
+                  <span class="barcode-stripe" style="width: 5px; margin-left: 3px;"></span>
+                  <span class="barcode-stripe" style="width: 2px; margin-left: 2px;"></span>
+                  <span class="barcode-stripe" style="width: 4px; margin-left: 1px;"></span>
+                  <span class="barcode-stripe" style="width: 2px; margin-left: 3px;"></span>
+                  <span class="barcode-stripe" style="width: 6px; margin-left: 2px;"></span>
+                  <span class="barcode-stripe" style="width: 3px; margin-left: 1px;"></span>
+                  <span class="barcode-stripe" style="width: 2px; margin-left: 2px;"></span>
+                </div>
+                <div class="barcode-text" id="idCardBarcodeText">*BMU-STUDENT*</div>
+              </div>
+
+              <div class="id-signature-box">
+                <div class="signature-stamp">Sunil K.</div>
+                <div class="signature-title">Registrar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ID Card Controls -->
+        <div class="id-card-actions">
+          <button class="btn-secondary" id="btnRegenerateCard" title="Regenerate card with newest database record">
+            🔄 Refresh Card Details (<span id="idCardMetaVersion">v1</span>)
+          </button>
+          <button class="btn-primary" id="btnPrintCard">
+            🖨️ Print ID Card
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- TAB 4: Concurrency Split Sandbox (TC3)                         -->
+    <!-- ============================================================= -->
+    <section class="tab-pane" id="concurrency-sandbox">
+      <div class="search-hero-card">
+        <div class="search-header-row">
+          <div>
+            <h2 class="section-title">⚡ TC3 Concurrent Record Updates Sandbox</h2>
+            <p class="section-subtitle">
+              Simulates two independent user sessions / browser windows updating the same student concurrently.
+              Watch Optimistic Concurrency Control (OCC) prevent silent overwrites and data loss.
+            </p>
+          </div>
+          <div class="form-group" style="min-width: 260px;">
+            <label class="form-label">Target Student for Concurrent Test:</label>
+            <select id="sandboxStudentSelect" class="form-control">
+              <option value="24MBA015">24MBA015 - Rohan Verma</option>
+              <option value="24CSE001">24CSE001 - Aarav Sharma</option>
+              <option value="24CSE042">24CSE042 - Sneha Panjwani</option>
+              <option value="24BBA088">24BBA088 - Priya Iyer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="alert-banner info">
+          <strong>Interactive Test Steps (TC3):</strong>
+          1. Both Window A & Window B load the same record at the same baseline version.<br>
+          2. Edit Phone in <b>Window A</b> and click <b>"Save from Window A"</b>. It succeeds and advances the database version.<br>
+          3. Now try to edit Address in <b>Window B</b> and click <b>"Save from Window B"</b>. The system blocks the stale overwrite, preserving Window A's update!
+        </div>
+
+        <div class="split-sandbox-container">
+          <!-- Window A -->
+          <div class="window-box active-user">
+            <div class="window-header">
+              <div class="window-dots">
+                <span class="window-dot red"></span>
+                <span class="window-dot yellow"></span>
+                <span class="window-dot green"></span>
+              </div>
+              <div class="window-title">Browser Window A (User 1 - Admin)</div>
+              <span class="version-pill" id="winAVersion" style="background: #3b82f6; color: #ffffff;">v1</span>
+            </div>
+
+            <div class="window-body">
+              <div id="winAAlert" class="alert-banner" style="display: none;"></div>
+
+              <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 8px;">
+                <div><strong>Student:</strong> <span id="winAName">-</span> (<span id="winAAdmission">-</span>)</div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label">Contact Number:</label>
+                <input type="text" id="winAPhone" class="form-control" />
+                <span class="form-hint">Window A edits contact details</span>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label class="form-label">Address:</label>
+                <textarea id="winAAddress" class="form-control" rows="2" readonly style="opacity: 0.75;"></textarea>
+              </div>
+
+              <button class="btn-primary" id="btnSaveWinA" style="width: 100%;">
+                💾 Save from Window A (Advances Version)
+              </button>
+            </div>
+          </div>
+
+          <!-- Window B -->
+          <div class="window-box">
+            <div class="window-header">
+              <div class="window-dots">
+                <span class="window-dot red"></span>
+                <span class="window-dot yellow"></span>
+                <span class="window-dot green"></span>
+              </div>
+              <div class="window-title">Browser Window B (User 2 - Academic Office)</div>
+              <span class="version-pill" id="winBVersion" style="background: #64748b; color: #ffffff;">v1</span>
+            </div>
+
+            <div class="window-body">
+              <div id="winBAlert" class="alert-banner" style="display: none;"></div>
+
+              <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 8px;">
+                <div><strong>Student:</strong> <span id="winBName">-</span> (<span id="winBAdmission">-</span>)</div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label">Contact Number:</label>
+                <input type="text" id="winBPhone" class="form-control" readonly style="opacity: 0.75;" />
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label class="form-label">Address:</label>
+                <textarea id="winBAddress" class="form-control" rows="2"></textarea>
+                <span class="form-hint">Window B edits address without reloading</span>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-primary" id="btnSaveWinB" style="flex: 1; background: #d97706;">
+                  💾 Save from Window B (Will Conflict!)
+                </button>
+                <button class="btn-secondary" id="btnRefreshWinB" title="Reload fresh data to resolve conflict">
+                  🔄 Reload
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- TAB 5: Hard Test Cases Suite (TC1, TC2, TC3, TC4)            -->
+    <!-- ============================================================= -->
+    <section class="tab-pane" id="test-suite">
+      <div class="test-suite-header">
+        <div>
+          <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem;">🧪 Automated Hard Test Case Suite</h2>
+          <p style="font-size: 0.88rem; color: #94a3b8;">
+            Direct execution & verification of TC1 (Duplicate Prevention), TC2 (Atomic Rollback), TC3 (Concurrent OCC), and TC4 (ID Card Integrity).
+          </p>
+        </div>
+        <button class="btn-primary" id="btnRunAllTests" style="background: #2563eb; font-size: 1rem; padding: 0.85rem 1.75rem;">
+          ▶️ Run All 4 Test Cases
+        </button>
+      </div>
+
+      <!-- Test Case Status Cards -->
+      <div class="tc-cards-grid">
+        <div class="tc-card" id="cardTc1">
+          <div class="tc-header">
+            <span class="tc-badge">TC1</span>
+            <span class="tc-status-pill" id="badgeTc1">Ready</span>
+          </div>
+          <div class="tc-name">Duplicate Student Registration</div>
+          <div class="tc-desc">
+            Attempts duplicate registration with existing admission number '24CSE001'. Asserts unique constraint and database integrity.
+          </div>
+          <button class="btn-secondary" id="btnRunTC1" style="margin-top: auto;">Run TC1</button>
+        </div>
+
+        <div class="tc-card" id="cardTc2">
+          <div class="tc-header">
+            <span class="tc-badge">TC2</span>
+            <span class="tc-status-pill" id="badgeTc2">Ready</span>
+          </div>
+          <div class="tc-name">Data Integrity & Atomic Rollback</div>
+          <div class="tc-desc">
+            Submits multi-field update with invalid phone and modified address. Verifies rejection and asserts zero partial/dirty writes.
+          </div>
+          <button class="btn-secondary" id="btnRunTC2" style="margin-top: auto;">Run TC2</button>
+        </div>
+
+        <div class="tc-card" id="cardTc3">
+          <div class="tc-header">
+            <span class="tc-badge">TC3</span>
+            <span class="tc-status-pill" id="badgeTc3">Ready</span>
+          </div>
+          <div class="tc-name">Concurrent Record Updates</div>
+          <div class="tc-desc">
+            Simulates two sessions saving on the same record version. Verifies OCC blocks outdated write and protects User 1's saved data.
+          </div>
+          <button class="btn-secondary" id="btnRunTC3" style="margin-top: auto;">Run TC3</button>
+        </div>
+
+        <div class="tc-card" id="cardTc4">
+          <div class="tc-header">
+            <span class="tc-badge">TC4</span>
+            <span class="tc-status-pill" id="badgeTc4">Ready</span>
+          </div>
+          <div class="tc-name">ID Card Generation & Freshness</div>
+          <div class="tc-desc">
+            Asserts nonexistent student card generation is strictly blocked, then updates existing student and asserts regenerated card has fresh data.
+          </div>
+          <button class="btn-secondary" id="btnRunTC4" style="margin-top: auto;">Run TC4</button>
+        </div>
+      </div>
+
+      <!-- Real-Time Execution Console -->
+      <div class="test-console">
+        <div class="console-header">
+          <span>🖥️ Live Assertion & Test Execution Log</span>
+          <button class="btn-sm-ghost" id="btnClearConsole" style="color: #94a3b8; background: #1e293b; border-color: #334155;">
+            Clear Console
+          </button>
+        </div>
+        <div class="console-output" id="consoleOutput">
+          <div style="color: #64748b; font-style: italic;">
+            Console ready. Click "Run All 4 Test Cases" or test individually to inspect step-by-step assertions.
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: View Student Details (Requirement B)                   -->
+  <!-- ============================================================= -->
+  <div class="modal-backdrop" id="viewModalBackdrop">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🎓</span>
+          <span>Student Comprehensive Profile</span>
+        </div>
+        <button class="modal-close-btn" onclick="window.closeViewModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="viewModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: Edit Student Details & TC2 (Requirement C)             -->
+  <!-- ============================================================= -->
+  <div class="modal-backdrop" id="editModalBackdrop">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>✏️</span>
+          <span>Edit Student Record</span>
+        </div>
+        <button class="modal-close-btn" onclick="window.closeEditModal()">&times;</button>
+      </div>
+
+      <form id="editStudentForm">
+        <div class="modal-body">
+          <div id="editModalAlert" class="alert-banner" style="display: none;"></div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; background: #f8fafc; padding: 0.75rem 1rem; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: #475569;">
+              Optimistic Concurrency Version: <strong id="editVersionTag" style="color: #0078d4;">v1</strong>
+            </div>
+            <button type="button" class="btn-sm-ghost" id="btnTriggerTc2Invalid" style="font-size: 0.75rem;">
+              ⚡ Fill Invalid Phone (Test TC2)
+            </button>
+          </div>
+
+          <input type="hidden" id="editExpectedVersion" />
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Admission Number (Immutable)</label>
+              <input type="text" id="editAdmissionNo" class="form-control" readonly />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required-star">*</span></label>
+              <input type="text" id="editName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required-star">*</span></label>
+              <input type="date" id="editDob" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Personal Email <span class="required-star">*</span></span>
+                <span class="form-hint">Non-BMU (Must be unique)</span>
+              </label>
+              <input type="email" id="editPersonalEmail" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Allocated Institutional Email</span>
+                <span class="form-hint">Official @bmu.edu.in</span>
+              </label>
+              <input type="email" id="editAllocatedEmail" class="form-control" readonly style="background: #f1f5f9; color: #0078d4; font-weight: 600;" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Student Phone Number <span class="required-star">*</span></span>
+                <span class="form-hint">Must be unique per student</span>
+              </label>
+              <input type="text" id="editPhone" class="form-control" maxlength="10" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Course / Program <span class="required-star">*</span></label>
+              <input type="text" id="editCourse" class="form-control" required />
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Class & Section <span class="required-star">*</span></label>
+              <input type="text" id="editSection" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent / Guardian Name</label>
+              <input type="text" id="editParentName" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent Phone Number</label>
+              <input type="tel" id="editParentPhone" class="form-control" maxlength="10" />
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label">Residential Address <span class="required-star">*</span></label>
+              <textarea id="editAddress" class="form-control" rows="3" required></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="window.closeEditModal()">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/db.js?v=7"></script>
+  <script src="js/test-suite.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
+</body>
+</html>
